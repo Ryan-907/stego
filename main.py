@@ -3,10 +3,12 @@ import numpy as np
 import pyinputplus as pyip
 import math
 
+DELIMITER = '====='
 CHOICES = ['Int', 'String']
 IMAGE = 'test.png' #Stock image. Remove to enable image entry in cli.
 if not IMAGE:
     IMAGE = input("Enter path to image: ")
+IMAGE = cv2.imread(IMAGE)
 
 #Ensures data is converted from native to binary.
 def data_to_binary(data):
@@ -29,16 +31,55 @@ def fetch_message():
     if option == CHOICES[1]:
         return input("Enter value: ")
 
-def size_check(image_name, data): #Ensures selected image is large enough to contain all the data
-    image = cv2.imread(image_name)
+def size_check(image, data): #Ensures selected image is large enough to contain all the data
     n_bytes = image.shape[0] * image.shape[1] * 3 // 8
     print(f'Max bytes to encode {n_bytes}')
     if len(data) > n_bytes:
         raise ValueError('Insufficient bytes. Require larger image or less data!')
     return True
 
-def data_encoding(image, data):
-    pass
+def data_encoding(image, data): #Encodes data in image using lSB 
+    data += DELIMITER
+    data_index = 0
+
+    bin_data = data_to_binary(data) #Converting data to bin
+
+    data_len = len(bin_data)
+
+    for row in image: #Iterating through pixels
+        for pixel in row:
+            r,g,b = data_to_binary(pixel) #Alters the int values in an array that represent pixels to binary representations
+
+            if data_index < data_len: #changing least signifciant pixel of the red, green, and blue values. 
+                pixel[0] = int(r[:1] + bin_data[data_index], 2)
+                data_index += 1
+            if data_index < data_len:
+                pixel[1] = int(g[:1] + bin_data[data_index], 2)
+                data_index += 1
+            if data_index < data_len:
+                pixel[2] = int(b[:1] + bin_data[data_index], 2)
+                data_index += 1
+            if data_index >= data_len:
+                break
+    return image
+
+def decoder(image):
+    print('Decoding...')
+    binary_data = ''
+    for row in image:
+        for pixel in row:
+            r,g,b=data_to_binary(pixel)
+            binary_data += r[-1]
+            binary_data += g[-1]
+            binary_data += b[-1]
+    all_bytes = [ binary_data[i: i+8] for i in range(0, len(binary_data), 8) ]
+    # convert from bits to characters
+    decoded_data = ""
+    for byte in all_bytes:
+        decoded_data += chr(int(byte, 2))
+        if decoded_data[-5:] == "=====":
+            break
+    return decoded_data[:-5]
 
 
 if __name__=='__main__':
@@ -47,7 +88,11 @@ if __name__=='__main__':
     datab = data_to_binary(data)
     size_check(IMAGE, datab)
     print(f'Data:{data}<->{datab}\n#Bytes: {math.ceil(len(str(datab))/8)}')
-
-
-
-#Size checker. Ensures size of image can hanld encoded data
+    cv2.imwrite('encode.png', data_encoding(IMAGE, datab))
+    enc_im = cv2.imread('encode.png')
+    decoded_data = decoder(enc_im)
+    print(f'Decoded message: {decoded_data}')
+    if decoded_data == datab:
+        print("Yipee")
+    else:
+        print("Saddness envelopes me")
