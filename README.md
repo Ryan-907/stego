@@ -205,3 +205,9 @@ This is the **main script execution**:
 ### **Final Notes**
 
 This implementation successfully demonstrates **LSB-based steganography**, ensuring data is embedded **without noticeable changes** to the image. Further refinements could explore **error correction** or **compression methods** for larger messages.
+
+# TO-DO:
+    - [ ] Add to read me explainign DCT
+    - [ ] Get deeper understanding of DCT math
+    - [ ] Look into GAN based stego 
+    - [ ] See about ensuring images are changed less, as they seem to be ruined afterwards. Perhaps file type
