@@ -1,8 +1,8 @@
 Authors: Ryan Thornton, Maren White, and Gavin Maybach
 
-## **Working Title:** Steganography Research for Capstone Project
+# **Working Title:** Steganography Research for Capstone Project
 
-### **Summary**
+## **Summary**
 
 This GitHub repository represents our team's work in the field of **Steganography**. This field encompasses all methods of hiding data in **plain sight**. Our current focus is the implications of **image steganography** in the realm of **cybersecurity**.
 
@@ -10,7 +10,8 @@ This GitHub repository represents our team's work in the field of **Steganograph
 
 # **Code Explanation**
 
-## **Lines 1-4**
+## LSb Method
+### **Lines 1-4**
 
 ```python
 import cv2
@@ -25,7 +26,7 @@ import math
 
 ---
 
-## **Lines 6-11**
+### **Lines 6-11**
 
 ```python
 DELIMITER = '====='
@@ -44,7 +45,7 @@ Here, we set a **default image path** (`test.png`). If this is removed, the user
 
 ---
 
-## **Lines 14-24**
+### **Lines 14-24**
 
 ```python
 def data_to_binary(data):
@@ -76,7 +77,7 @@ This function converts input data into **binary format** based on its type:
 
 ---
 
-## **Lines 27-32**
+### **Lines 27-32**
 
 ```python
 def fetch_message():
@@ -91,7 +92,7 @@ This function prompts the user to select between an **integer or string input**,
 
 ---
 
-## **Lines 34-39**
+### **Lines 34-39**
 
 ```python
 def size_check(image, data):
@@ -109,7 +110,7 @@ This function **ensures that the image has sufficient capacity** to store the me
 
 ---
 
-## **Lines 41-62**
+### **Lines 41-62**
 
 ```python
 def data_encoding(image, data):
@@ -135,7 +136,7 @@ def data_encoding(image, data):
     return image
 ```
 
-### **How Encoding Works:**
+#### **How Encoding Works:**
 
 - The **data and delimiter** are converted to binary.
 - Iterates through **each pixel** and **modifies the least significant bit (LSB)** of the **red, green, and blue channels**.
@@ -143,7 +144,7 @@ def data_encoding(image, data):
 
 ---
 
-## **Lines 64-80** (Decoding the Message)
+### **Lines 64-80** (Decoding the Message)
 
 ```python
 def decoder(image):
@@ -165,7 +166,7 @@ def decoder(image):
     return decoded_data[:-len(DELIMITER)]
 ```
 
-### **How Decoding Works:**
+#### **How Decoding Works:**
 
 - Extracts the **LSB from each color channel**.
 - Reconstructs the **binary data**.
@@ -174,7 +175,7 @@ def decoder(image):
 
 ---
 
-## **Main Execution (Lines 83-97)**
+### **Main Execution (Lines 83-97)**
 
 ```python
 if __name__ == '__main__':
@@ -202,9 +203,10 @@ This is the **main script execution**:
 
 ---
 
-### **Final Notes**
+#### **Final Notes**
 
 This implementation successfully demonstrates **LSB-based steganography**, ensuring data is embedded **without noticeable changes** to the image. Further refinements could explore **error correction** or **compression methods** for larger messages.
+## DCT Method
 
 # TO-DO:
     - [ ] Add to read me explainign DCT
