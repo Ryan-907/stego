@@ -3,7 +3,7 @@ import numpy as np
 import pyinputplus as pyip
 import math
 
-DELIMITER = '====='
+DELIMITER = '=='
 CHOICES = ['Int', 'String']
 IMAGE = 'test.png' #Stock image. Remove to enable image entry in cli.
 if not IMAGE:
@@ -15,7 +15,7 @@ def data_to_binary(data):
     if isinstance(data, str):
         return ''.join(format(ord(char), '08b') for char in data) #Converts string
     elif isinstance(data, int): #Converts int
-        return bin(data)
+        return format(data, '08b')
     elif isinstance(data, bytes): #Converts bytes
         return ''.join(format(byte, '08b') for byte in data)
     elif isinstance(data, np.ndarray): #Converts numpy arrays
@@ -41,23 +41,21 @@ def size_check(image, data): #Ensures selected image is large enough to contain 
 def data_encoding(image, data): #Encodes data in image using lSB 
     data += DELIMITER
     data_index = 0
-
     bin_data = data_to_binary(data) #Converting data to bin
-
     data_len = len(bin_data)
 
     for row in image: #Iterating through pixels
         for pixel in row:
             r,g,b = data_to_binary(pixel) #Alters the int values in an array that represent pixels to binary representations
-
             if data_index < data_len: #changing least signifciant pixel of the red, green, and blue values. 
-                pixel[0] = int(r[:1] + bin_data[data_index], 2)
+
+                pixel[0] = int(r[:-1] + bin_data[data_index], 2)
                 data_index += 1
             if data_index < data_len:
-                pixel[1] = int(g[:1] + bin_data[data_index], 2)
+                pixel[1] = int(g[:-1] + bin_data[data_index], 2)
                 data_index += 1
             if data_index < data_len:
-                pixel[2] = int(b[:1] + bin_data[data_index], 2)
+                pixel[2] = int(b[:-1] + bin_data[data_index], 2)
                 data_index += 1
             if data_index >= data_len:
                 break
@@ -77,15 +75,16 @@ def decoder(image):
     decoded_data = ""
     for byte in all_bytes:
         decoded_data += chr(int(byte, 2))
-        if decoded_data[-5:] == "=====":
+        if decoded_data[-len(DELIMITER):] == DELIMITER:
             break
-    return decoded_data[:-5]
+    return decoded_data[:-len(DELIMITER)]
 
 
 if __name__=='__main__':
 
     data = fetch_message()
     datab = data_to_binary(data)
+    print(f'OG Data: {data} New Data: {datab}')
     size_check(IMAGE, datab)
     print(f'Data:{data}<->{datab}\n#Bytes: {math.ceil(len(str(datab))/8)}')
     cv2.imwrite('encode.png', data_encoding(IMAGE, datab))
