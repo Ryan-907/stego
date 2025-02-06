@@ -1,215 +1,149 @@
-Authors: Ryan Thornton, Maren White, and Gavin Maybach
+# **Steganography Research for Capstone Project**
 
-# **Working Title:** Steganography Research for Capstone Project
+### **Authors:** Ryan Thornton, Maren White, Gavin Maybach
 
-## **Summary**
+## **Project Overview**
 
-This GitHub repository represents our team's work in the field of **Steganography**. This field encompasses all methods of hiding data in **plain sight**. Our current focus is the implications of **image steganography** in the realm of **cybersecurity**.
-
----
-
-# **Code Explanation**
-
-## LSb Method
-### **Lines 1-4**
-
-```python
-import cv2
-import numpy as np
-import pyinputplus as pyip
-import math
-```
-
-`cv2` and `numpy` enable us to work with images—`cv2` allows loading and viewing images, while `numpy` permits matrix operations on the image.
-
-`pyinputplus` simplifies input handling, and `math` is used for basic mathematical operations.
+This repository contains our research and implementation of **image-based steganography** for our capstone project. We explore two primary methods for hiding messages within images: **Least Significant Bit (LSB) Steganography** and **Discrete Cosine Transform (DCT) Steganography**. Our objective is to evaluate the effectiveness and detectability of these techniques in a **cybersecurity** context.
 
 ---
 
-### **Lines 6-11**
+## **Code Explanation**
 
-```python
-DELIMITER = '====='
-CHOICES = ['Int', 'String']
-IMAGE = 'test.png'
-if not IMAGE:
-    IMAGE = input("Enter path to image: ")
+### **1. Least Significant Bit (LSB) Method**
 
-IMAGE = cv2.imread(IMAGE)
-```
+LSB steganography embeds secret data by modifying the **least significant bit** of each pixel in an image. This ensures minimal perceptual change while effectively storing the message.
 
-Here, we set a **default image path** (`test.png`). If this is removed, the user is prompted to enter an image path. `cv2.imread()` is used to load the image.
+#### **Key Functions & Workflow**
 
-- `DELIMITER` is appended to the end of the data (used later in the code) so the **decoder function** knows when the message ends.
-- `CHOICES` defines the acceptable data types for encoding (currently **integer** or **string**).
-
----
-
-### **Lines 14-24**
-
-```python
-def data_to_binary(data):
-    if isinstance(data, str):
-        return ''.join(format(ord(char), '08b') for char in data)  # Converts string
-    elif isinstance(data, int):  # Converts int
-        return bin(data)
-    elif isinstance(data, bytes):  # Converts bytes
-        return ''.join(format(byte, '08b') for byte in data)
-    elif isinstance(data, np.ndarray):  # Converts numpy arrays
-        return [format(i, '08b') for i in data]
-    else:
-        raise TypeError("Type not supported womp womp")
-```
-
-This function converts input data into **binary format** based on its type:
-
-- **Strings**: Each character is converted to its **8-bit ASCII representation**.
-- **Integers**: Converted to binary using `bin()`.
-- **Bytes**: Each byte is represented in **8-bit binary**.
-- **NumPy Arrays**: Pixel values are converted into their **binary equivalents**.
-
-**Example:** Converting 'hello' to binary:
-
-```python
->>> data_to_binary('hello')
-'0110100001100101011011000110110001101111'
-```
-
----
-
-### **Lines 27-32**
-
-```python
-def fetch_message():
-    option = pyip.inputMenu(CHOICES, numbered=True)
-    if option == CHOICES[0]:
-        return int(input("Enter int value: "))
-    if option == CHOICES[1]:
-        return input("Enter value: ")
-```
-
-This function prompts the user to select between an **integer or string input**, ensuring only supported data types are used.
-
----
-
-### **Lines 34-39**
-
-```python
-def size_check(image, data):
-    n_bytes = image.shape[0] * image.shape[1] * 3 // 8
-    print(f'Max bytes to encode: {n_bytes}')
-    if len(data) > n_bytes:
-        raise ValueError('Insufficient bytes. Use a larger image or reduce the data size!')
-    return True
-```
-
-This function **ensures that the image has sufficient capacity** to store the message:
-
-- It calculates the **maximum bytes available** for encoding.
-- If the message size **exceeds the image’s capacity**, an error is raised.
+1. **Binary Conversion (`data_to_binary`)**  
+    Converts data (string, integer, bytes, numpy array) into binary format for encoding.
+    
+    ```python
+    def data_to_binary(data):
+        if isinstance(data, str):
+            return ''.join(format(ord(char), '08b') for char in data)
+        elif isinstance(data, int):
+            return bin(data)[2:]
+        elif isinstance(data, bytes):
+            return ''.join(format(byte, '08b') for byte in data)
+        elif isinstance(data, np.ndarray):
+            return [format(i, '08b') for i in data]
+        else:
+            raise TypeError("Unsupported data type")
+    ```
+    
+2. **Encoding (`data_encoding`)**
+    
+    - Converts the message into binary.
+    - Iterates through image pixels, modifying the least significant bit of the **red, green, and blue (RGB) channels**.
+    - Stops encoding when the **delimiter** (`=====`) is reached.
+    
+    ```python
+    def data_encoding(image, data):
+        data += DELIMITER  # Append delimiter to signal end
+        bin_data = data_to_binary(data)
+        data_index = 0
+        data_len = len(bin_data)
+    
+        for row in image:
+            for pixel in row:
+                for channel in range(3):  # Modify RGB channels
+                    if data_index < data_len:
+                        pixel[channel] = int(format(pixel[channel], '08b')[:-1] + bin_data[data_index], 2)
+                        data_index += 1
+                    if data_index >= data_len:
+                        break
+        return image
+    ```
+    
+3. **Decoding (`decoder`)**
+    
+    - Extracts the **least significant bits** from the image.
+    - Reconstructs the message **bit-by-bit**.
+    - Stops decoding when the **delimiter** is detected.
+    
+    ```python
+    def decoder(image):
+        binary_data = ''
+        for row in image:
+            for pixel in row:
+                for channel in range(3):
+                    binary_data += format(pixel[channel], '08b')[-1]  # Extract LSB
+        
+        all_bytes = [binary_data[i:i+8] for i in range(0, len(binary_data), 8)]
+        decoded_data = ''.join(chr(int(byte, 2)) for byte in all_bytes)
+        return decoded_data.split(DELIMITER)[0]
+    ```
+    
 
 ---
 
-### **Lines 41-62**
+### **2. Discrete Cosine Transform (DCT) Method**
 
-```python
-def data_encoding(image, data):
-    data += DELIMITER
-    data_index = 0
-    bin_data = data_to_binary(data)  # Converting data to binary
-    data_len = len(bin_data)
+DCT-based steganography embeds data by modifying frequency components of an image rather than its pixel values. This approach is less detectable in compressed images (e.g., JPEGs).
 
-    for row in image:  # Iterate through pixels
-        for pixel in row:
-            r, g, b = data_to_binary(pixel)  # Convert pixel values to binary
-            if data_index < data_len:  # Modify LSB
-                pixel[0] = int(r[:-1] + bin_data[data_index], 2)
-                data_index += 1
-            if data_index < data_len:
-                pixel[1] = int(g[:-1] + bin_data[data_index], 2)
-                data_index += 1
-            if data_index < data_len:
-                pixel[2] = int(b[:-1] + bin_data[data_index], 2)
-                data_index += 1
-            if data_index >= data_len:
+#### **Mathematical Foundation of DCT**
+
+The Discrete Cosine Transform (DCT) is a **Fourier-related transform** that represents an image as a sum of **cosine functions oscillating at different frequencies**. The transformation is defined as:
+
+$$
+C(u, v) = \frac{1}{4} \sum_{x=0}^{7} \sum_{y=0}^{7} f(x,y) \cos \left[ \frac{(2x+1)u \pi}{16} \right] \cos \left[ \frac{(2y+1)v \pi}{16} \right]
+
+$$
+Where:
+
+- **f(x, y)** represents the pixel intensity at coordinate **(x, y)**
+- **C(u, v)** is the transformed frequency domain representation
+- **u, v** represent the spatial frequency components
+
+DCT works by concentrating the **most important image information into the lowest frequency components**, which allows for subtle modifications in the high-frequency coefficients without noticeable visual degradation.
+
+#### **Key Functions & Workflow**
+
+4. **Apply DCT (`apply_dct`)**
+    
+    - Converts image blocks into **frequency domain representation**.
+    - Uses **scipy.fftpack.dct** for **2D transformation**.
+    
+    ```python
+    def apply_dct(blocks):
+        return np.array([scipy.fftpack.dct(scipy.fftpack.dct(block.T, norm='ortho').T, norm='ortho') for block in blocks])
+    ```
+    
+5. **Encoding (`encode_message`)**
+    
+    - Converts message to binary.
+    - Modifies **low-frequency DCT coefficients**, typically at **u=1, v=2**, as they are less visually significant.
+    
+    ```python
+    def encode_message(dct_blocks, message):
+        bin_msg = data_to_binary(message) + DELIMITER
+        data_index = 0
+        
+        for dct_block in dct_blocks:
+            if data_index >= len(bin_msg):
                 break
-    return image
-```
-
-#### **How Encoding Works:**
-
-- The **data and delimiter** are converted to binary.
-- Iterates through **each pixel** and **modifies the least significant bit (LSB)** of the **red, green, and blue channels**.
-- The message is encoded **bit-by-bit** until the entire data is hidden.
+            u, v = 1, 2  # Frequency location for modification
+            dct_block[u,v] = (dct_block[u,v] & ~1) | int(bin_msg[data_index])
+            data_index += 1
+        return dct_blocks
+    ```
+    
 
 ---
 
-### **Lines 64-80** (Decoding the Message)
+## **Future Work & Improvements**
 
-```python
-def decoder(image):
-    print('Decoding...')
-    binary_data = ''
-    for row in image:
-        for pixel in row:
-            r, g, b = data_to_binary(pixel)
-            binary_data += r[-1]  # Extract LSBs
-            binary_data += g[-1]
-            binary_data += b[-1]
-    all_bytes = [binary_data[i: i+8] for i in range(0, len(binary_data), 8)]
+### **To-Do List:**
 
-    decoded_data = ""
-    for byte in all_bytes:
-        decoded_data += chr(int(byte, 2))
-        if decoded_data[-len(DELIMITER):] == DELIMITER:
-            break
-    return decoded_data[:-len(DELIMITER)]
-```
-
-#### **How Decoding Works:**
-
-- Extracts the **LSB from each color channel**.
-- Reconstructs the **binary data**.
-- Splits it into **8-bit segments** and converts them to characters.
-- Stops when the **delimiter is detected**, ensuring **only the hidden message is retrieved**.
+- [x]  Expand the **mathematical explanation** of DCT and how different frequency coefficients affect image perception.
+- [ ]  Research **GAN-based steganography**.
+- [ ]  Reduce image distortion after encoding.
+- [ ]  Implement error correction techniques for message retrieval.
 
 ---
 
-### **Main Execution (Lines 83-97)**
+### **Final Thoughts**
 
-```python
-if __name__ == '__main__':
-    data = fetch_message()
-    datab = data_to_binary(data)
-    print(f'Original Data: {data}, Binary: {datab}')
-    size_check(IMAGE, datab)
-    cv2.imwrite('encode.png', data_encoding(IMAGE, datab))
-    enc_im = cv2.imread('encode.png')
-    decoded_data = decoder(enc_im)
-    print(f'Decoded Message: {decoded_data}')
-    if decoded_data == data:
-        print("Yipee")
-    else:
-        print("Sadness envelopes me")
-```
-
-This is the **main script execution**:
-
-1. Fetches user input.
-2. Converts it to binary and checks if it fits inside the image.
-3. **Encodes** the data into the image and saves it.
-4. **Decodes** the image to retrieve the hidden message.
-5. **Verifies the output**, printing `"Yipee"` if successful or `"Sadness envelopes me"` if not.
-
----
-
-#### **Final Notes**
-
-This implementation successfully demonstrates **LSB-based steganography**, ensuring data is embedded **without noticeable changes** to the image. Further refinements could explore **error correction** or **compression methods** for larger messages.
-## DCT Method
-
-# TO-DO:
-    - [ ] Add to read me explainign DCT
-    - [ ] Get deeper understanding of DCT math
-    - [ ] Look into GAN based stego 
-    - [ ] See about ensuring images are changed less, as they seem to be ruined afterwards. Perhaps file type
+This project demonstrates how **steganography techniques** can be applied to **hide messages in images** using different encoding strategies. While LSB-based methods provide **high capacity**, they are more detectable. DCT-based methods offer **better robustness** but require **higher computational cost**. Further research will explore **GAN-based approaches** for improved undetectability.

@@ -12,12 +12,16 @@ CHOICES = ['Int', 'String']
 def data_to_binary(data):
     if isinstance(data, str):
         return ''.join(format(ord(char), '08b') for char in data) #Converts string
+    
     elif isinstance(data, int): #Converts int
         return format(data, '08b')
+    
     elif isinstance(data, bytes): #Converts bytes
         return ''.join(format(byte, '08b') for byte in data)
+    
     elif isinstance(data, np.ndarray): #Converts numpy arrays
         return [format(i, '08b') for i in data]
+    
     else:
         raise TypeError("Type not supoprted womp womp")
 
@@ -25,12 +29,12 @@ def fetch_message():
     option = pyip.inputMenu(CHOICES, numbered=True) 
     if option == CHOICES[0]:
         return int(input("Enter int value: "))
+    
     if option == CHOICES[1]:
         return input("Enter value: ")
     
 def gray_scale(image):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
     return gray_image
 
 def size_adjust(image):
@@ -39,6 +43,7 @@ def size_adjust(image):
         new_height = height + (8 - height % 8)
     else:
         new_height = height
+        
     if width % 8 != 0:
         new_width = width + (8 - width % 8)
     else:
@@ -63,7 +68,6 @@ def apply_dct(blocks):
     return dct_blocks
 
 def encode_message(dct_blocks, message):
-
     bin_msg=data_to_binary(message) + DELIMITER
     data_index = 0
 
