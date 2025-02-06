@@ -120,16 +120,10 @@ if __name__=='__main__':
 
     msg = fetch_message()
     bin_msg = data_to_binary(msg)
-    #cv2.imshow('og', image)
-    #cv2.waitKey(0)
 
     gray = gray_scale(image)
-    #cv2.imshow("gray image", gray)
-    #cv2.waitKey(0)
 
     scale_image = size_adjust(gray)
-    #cv2.imshow('new size', scale_image)
-    #cv2.waitKey(0)
 
     blocked_image = blocking(scale_image)
     height, width = scale_image.shape
