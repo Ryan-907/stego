@@ -2,14 +2,24 @@ import cv2
 import numpy as np
 import pyinputplus as pyip
 import math
+import tkinter as tk
+from tkinter import filedialog as fd
 
 DELIMITER = '=='
 CHOICES = ['Int', 'String']
-IMAGE = 'test.png' #Stock image. Remove to enable image entry in cli.
-if not IMAGE:
-    IMAGE = input("Enter path to image: ")
-IMAGE = cv2.imread(IMAGE)
 
+def file_selection():
+    file_path = fd.askopenfilename()
+    return file_path
+
+def fetch_image():
+    root = tk.Tk()
+    root.withdraw()
+
+    file_path = file_selection()
+    return file_path
+
+                
 #Ensures data is converted from native to binary.
 def data_to_binary(data):
     if isinstance(data, str):
@@ -81,7 +91,8 @@ def decoder(image):
 
 
 if __name__=='__main__':
-
+    IMAGE = fetch_image()
+    IMAGE = cv2.imread(IMAGE)
     data = fetch_message()
     datab = data_to_binary(data)
     print(f'OG Data: {data} New Data: {datab}')
