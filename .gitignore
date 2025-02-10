@@ -3,3 +3,10 @@ test.png
 encode.png
 encode_dct.png
 stock.jpeg
+LSBEncoded.png
+
+# Ignore compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.cpython-*

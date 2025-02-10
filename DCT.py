@@ -1,38 +1,7 @@
 import cv2
 import numpy as np
 import scipy.fftpack
-import pyinputplus as pyip
-
-
-image = 'stock.jpeg'
-image = cv2.imread(image)
-DELIMITER = '1111'
-CHOICES = ['Int', 'String']
-
-def data_to_binary(data):
-    if isinstance(data, str):
-        return ''.join(format(ord(char), '08b') for char in data) #Converts string
-    
-    elif isinstance(data, int): #Converts int
-        return format(data, '08b')
-    
-    elif isinstance(data, bytes): #Converts bytes
-        return ''.join(format(byte, '08b') for byte in data)
-    
-    elif isinstance(data, np.ndarray): #Converts numpy arrays
-        return [format(i, '08b') for i in data]
-    
-    else:
-        raise TypeError("Type not supoprted womp womp")
-
-def fetch_message():
-    option = pyip.inputMenu(CHOICES, numbered=True) 
-    if option == CHOICES[0]:
-        return int(input("Enter int value: "))
-    
-    if option == CHOICES[1]:
-        return input("Enter value: ")
-    
+  
 def gray_scale(image):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return gray_image
@@ -67,15 +36,14 @@ def apply_dct(blocks):
     dct_blocks = np.array([scipy.fftpack.dct(scipy.fftpack.dct(block.T, norm='ortho').T, norm='ortho') for block in blocks])
     return dct_blocks
 
-def encode_message(dct_blocks, message):
-    bin_msg=data_to_binary(message) + DELIMITER
+def encode_message(dct_blocks, bin_msg):
     data_index = 0
 
     for dct_block in dct_blocks:
         if data_index >= len(bin_msg):
             break
 
-        u, v = 1, 2
+        u, v = 4, 4
 
         coeff = int(dct_block[u,v])
         coeff = (coeff & ~1) | int(bin_msg[data_index])
@@ -100,47 +68,20 @@ def reassemble_image(blocks, height, width):
 
     return np.clip(recon, 0 , 255).astype(np.uint8)
 
-def decode_dct(dct_blocks):
+def decode_dct(dct_blocks, bin_delimiter):
     bin_msg = ''
 
     for dct_block in dct_blocks:
-        u,v = 1,2
-        coeff = int(dct_block[u,v])
-        bin_msg += str(coeff & 1)
+        u, v = 4, 4  # Ensure this matches encoding
+        coeff = int(dct_block[u, v])  # Extract modified coefficient
+        bin_msg += str(coeff & 1)  # Extract the least significant bit (LSB)
 
-        if bin_msg.endswith(DELIMITER):
-            break
-    msg_char = [chr(int(bin_msg[i:i+8], 2)) for i in range(0, len(bin_msg)-8, 8)]
+        # Stop reading if the delimiter is detected
+        if bin_msg.endswith(bin_delimiter):
+            break  
 
-    return ''.join(msg_char)
+    # Convert binary message back to text (excluding delimiter)
+    bin_msg = bin_msg[:-len(bin_delimiter)]  # Remove delimiter before conversion
+    msg_chars = [chr(int(bin_msg[i:i+8], 2)) for i in range(0, len(bin_msg), 8)]
 
-    
-
-if __name__=='__main__':
-
-    msg = fetch_message()
-    bin_msg = data_to_binary(msg)
-
-    gray = gray_scale(image)
-
-    scale_image = size_adjust(gray)
-
-    blocked_image = blocking(scale_image)
-    height, width = scale_image.shape
-
-    dct_result = apply_dct(blocked_image)
-
-    encoded = encode_message(dct_result, bin_msg)
-    recon_img = reassemble_image(encoded, height, width)
-
-    cv2.imwrite('encode_dct.png', recon_img)
-    cv2.imshow('dct encoded', recon_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    print(decode_dct(encoded))
-
-    invert_dct(encoded)
-
-
-
+    return ''.join(msg_chars)  # Return the decoded message

@@ -1,108 +1,122 @@
 import cv2
-import numpy as np
-import pyinputplus as pyip
-import math
 import tkinter as tk
 from tkinter import filedialog as fd
+import numpy as np
+import LSb
+import DCT
+#Constants
+FILETYPES = [("Image Files", "*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.tiff;*.webp"),
+    ("PNG Files", "*.png"),
+    ("JPEG Files", "*.jpg;*.jpeg")]
 
 DELIMITER = '=='
-CHOICES = ['Int', 'String']
 
-def file_selection():
-    file_path = fd.askopenfilename()
-    return file_path
+METHODS = ['Least Significant Bit', 'Discrete Cosine Transform']
+
+
 
 def fetch_image():
+    selection = fd.askopenfilename(filetypes=FILETYPES)
+    return selection
+
+def fetch_message():
     root = tk.Tk()
-    root.withdraw()
+    root.title("Enter Message")
 
-    file_path = file_selection()
-    return file_path
+    tk.Label(root, text="Enter message:").pack(pady=5)
 
-                
-#Ensures data is converted from native to binary.
+    entry = tk.Entry(root)
+    entry.pack(pady=5)
+    entry.focus()
+
+    input_var = tk.StringVar()
+
+    entry.bind("<Return>", lambda event: (input_var.set(entry.get()), root.destroy()))
+
+    root.wait_window()
+
+    return input_var.get()
+
 def data_to_binary(data):
     if isinstance(data, str):
-        return ''.join(format(ord(char), '08b') for char in data) #Converts string
+        bin_data = ''.join(format(ord(char), '08b') for char in data)
+        return bin_data
     elif isinstance(data, int): #Converts int
-        return format(data, '08b')
+        bin_data = format(data, '08b')
+        return bin_data 
     elif isinstance(data, bytes): #Converts bytes
-        return ''.join(format(byte, '08b') for byte in data)
+        bin_data = ''.join(format(byte, '08b') for byte in data)
+        return bin_data 
     elif isinstance(data, np.ndarray): #Converts numpy arrays
-        return [format(i, '08b') for i in data]
+        bin_data = [format(i, '08b') for i in data]
+        return bin_data 
     else:
         raise TypeError("Type not supoprted womp womp")
 
-#Gets the message to be hidden. Either integer or string accepted.
-def fetch_message():
-    option = pyip.inputMenu(CHOICES, numbered=True) 
-    if option == CHOICES[0]:
-        return int(input("Enter int value: "))
-    if option == CHOICES[1]:
-        return input("Enter value: ")
+def stego_method():
+    root = tk.Tk()
+    root.title('Select stego method')
 
-def size_check(image, data): #Ensures selected image is large enough to contain all the data
-    n_bytes = image.shape[0] * image.shape[1] * 3 // 8
-    print(f'Max bytes to encode {n_bytes}')
-    if len(data) > n_bytes:
-        raise ValueError('Insufficient bytes. Require larger image or less data!')
-    return True
+    method = tk.StringVar()
+    method.set(METHODS[0])
 
-def data_encoding(image, data): #Encodes data in image using lSB 
-    data += DELIMITER
-    data_index = 0
-    bin_data = data_to_binary(data) #Converting data to bin
-    data_len = len(bin_data)
+    tk.OptionMenu(root, method, *METHODS).pack()
 
-    for row in image: #Iterating through pixels
-        for pixel in row:
-            r,g,b = data_to_binary(pixel) #Alters the int values in an array that represent pixels to binary representations
-            if data_index < data_len: #changing least signifciant pixel of the red, green, and blue values. 
+    root.bind("<Return>", lambda event: root.destroy())
 
-                pixel[0] = int(r[:-1] + bin_data[data_index], 2)
-                data_index += 1
-            if data_index < data_len:
-                pixel[1] = int(g[:-1] + bin_data[data_index], 2)
-                data_index += 1
-            if data_index < data_len:
-                pixel[2] = int(b[:-1] + bin_data[data_index], 2)
-                data_index += 1
-            if data_index >= data_len:
-                break
-    return image
+    root.mainloop()
 
-def decoder(image):
-    print('Decoding...')
-    binary_data = ''
-    for row in image:
-        for pixel in row:
-            r,g,b=data_to_binary(pixel)
-            binary_data += r[-1]
-            binary_data += g[-1]
-            binary_data += b[-1]
-    all_bytes = [ binary_data[i: i+8] for i in range(0, len(binary_data), 8) ]
-    # convert from bits to characters
-    decoded_data = ""
-    for byte in all_bytes:
-        decoded_data += chr(int(byte, 2))
-        if decoded_data[-len(DELIMITER):] == DELIMITER:
-            break
-    return decoded_data[:-len(DELIMITER)]
+    return method.get()
+
+def lsb(image, bin_data):
+    valid_size = LSb.size_check(image, bin_data)
+    if valid_size:
+        encoded = LSb.data_encoding(image, bin_data)
+        return encoded
+    else:
+        raise ValueError('Something wrong happened')
+    
 
 
 if __name__=='__main__':
-    IMAGE = fetch_image()
-    IMAGE = cv2.imread(IMAGE)
-    data = fetch_message()
-    datab = data_to_binary(data)
-    print(f'OG Data: {data} New Data: {datab}')
-    size_check(IMAGE, datab)
-    print(f'Data:{data}<->{datab}\n#Bytes: {math.ceil(len(str(datab))/8)}')
-    cv2.imwrite('encode.png', data_encoding(IMAGE, datab))
-    enc_im = cv2.imread('encode.png')
-    decoded_data = decoder(enc_im)
-    print(f'Decoded message: {decoded_data}')
-    if decoded_data == datab:
-        print("Yipee")
+    #Image Handling
+    image = fetch_image()
+    image = cv2.imread(image)
+    image = cv2.resize(image, (800,400))
+    cv2.imshow('Selected Image', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    #Message Handling
+    msg = fetch_message()
+    msg_bin = data_to_binary(msg) + data_to_binary(DELIMITER)
+    method = stego_method()
+    if method == METHODS[0]:
+        stego_image = lsb(image, msg_bin)
+        cv2.imwrite("LSBEncoded.png", stego_image)
+
+    elif method == METHODS[1]:
+        image = DCT.gray_scale(image)  
+        image = DCT.size_adjust(image)  
+        height, width = image.shape  
+
+        blocks = DCT.blocking(image)  
+        dct_blocks = DCT.apply_dct(blocks)  
+        encoded_blocks = DCT.encode_message(dct_blocks, msg_bin) s
+        idct_blocks = DCT.invert_dct(encoded_blocks)  
+        recon_img = DCT.reassemble_image(idct_blocks, height, width) 
+
+        cv2.imwrite('encode_dct.png', recon_img) 
+        cv2.imshow('DCT Encoded', recon_img)  
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        print(DCT.decode_dct(encoded_blocks, data_to_binary(DELIMITER)))
+
     else:
-        print("Saddness envelopes me")
+        raise TypeError('Unsupported method')
+
+
+    
+
+    
+   
